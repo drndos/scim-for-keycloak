@@ -189,7 +189,7 @@ public class GroupHandler extends ResourceHandler<Group>
 
 
     updateUserMemberships(scimKeycloakContext, group, groupModel, realmModel);
-    updateGroupMemberships(scimKeycloakContext, group, groupModel, realmModel);
+    //updateGroupMemberships(scimKeycloakContext, group, groupModel, realmModel);
 
     return groupModel;
   }
@@ -278,12 +278,7 @@ public class GroupHandler extends ResourceHandler<Group>
                                      RealmModel realmModel)
   {
     KeycloakSession keycloakSession = scimKeycloakContext.getKeycloakSession();
-    Set<String> expectedUserMemberIds = group.getMembers().stream().filter(groupMember -> {
-      return (groupMember.getType().map(type -> type.equals(ResourceTypeNames.USER)).orElse(false)
-              || groupMember.getRef()
-                            .map(ref -> ref.matches(String.format(".*?%s/[\\w\\-]+", EndpointPaths.USERS)))
-                            .orElse(false));
-    }).map(groupMember -> groupMember.getValue().get()).collect(Collectors.toSet());
+    Set<String> expectedUserMemberIds = group.getMembers().stream().map(groupMember -> groupMember.getValue().get()).collect(Collectors.toSet());
     List<UserModel> usersToLeaveGroup = keycloakSession.users()
                                                        .getGroupMembersStream(realmModel, groupModel)
                                                        .collect(Collectors.toList());
@@ -324,7 +319,8 @@ public class GroupHandler extends ResourceHandler<Group>
       UserModel newMember = keycloakSession.users().getUserById(realmModel, newUserMemberId);
       if (newMember == null)
       {
-        throw new ResourceNotFoundException(String.format("User with id '%s' does not exist", newUserMemberId));
+        log.error(String.format("User with id '%s' does not exist", newUserMemberId));
+        return;
       }
       newMember.joinGroup(groupModel);
       adminEventAuditer.createEvent(OperationType.CREATE,
